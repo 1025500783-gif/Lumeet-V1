@@ -1,0 +1,21 @@
+name = "ai-video-call-relay"
+main = "src/index.js"
+compatibility_date = "2025-01-01"
+
+# 網頁版（iPhone 用）：deploy 前先在專案根目錄跑 npm run build:web，會產生 src/web-assets.js
+
+[[durable_objects.bindings]]
+name = "ROOM"
+class_name = "CallRoom"
+
+[[migrations]]
+tag = "v1"
+new_sqlite_classes = ["CallRoom"]
+
+# Secret（deploy.sh 會設定）：RELAY_SECRET
+
+# 選用：綁定 R2 讓 AI 有「視覺記憶」。說話當下的畫面會存進 vision-cache/，
+# 想記住的用 call_remember_frame 搬到 memories/。記得在 bucket 設生命週期規則讓 vision-cache/ 自動過期。
+# [[r2_buckets]]
+# binding = "VISION"
+# bucket_name = "你的 bucket 名稱"

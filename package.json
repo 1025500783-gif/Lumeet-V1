@@ -1,0 +1,18 @@
+{
+  "name": "ai-video-call",
+  "version": "0.1.0",
+  "private": true,
+  "description": "Lumeet｜見你 — AI 視訊通話（網頁版與 Android APK）",
+  "scripts": {
+    "build:web": "node scripts/build-web.mjs",
+    "android:sync": "npm run build:web && npx cap sync android",
+    "android:apk": "npm run android:sync && cd android && ./gradlew assembleDebug"
+  },
+  "dependencies": {
+    "@capacitor/android": "^8.5.2",
+    "@capacitor/core": "^8.5.2"
+  },
+  "devDependencies": {
+    "@capacitor/cli": "^8.5.2"
+  }
+}

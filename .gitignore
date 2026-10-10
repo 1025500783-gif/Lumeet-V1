@@ -1,0 +1,8 @@
+node_modules/
+www/
+mcp-relay/node_modules/
+mcp-relay/.wrangler/
+mcp-relay/.dev.vars
+mcp-relay/wrangler.local.toml
+*.keystore
+*.jks
