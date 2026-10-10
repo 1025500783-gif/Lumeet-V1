@@ -1,0 +1,76 @@
+Lumeet｜见你 使用教程
+================================
+
+本项目仅供个人自用，不可商用；严禁未成年人使用。
+制作：抖音 @小香菇（H.han929）与 ChatGPT 沉渊、Claude 岑序
+
+看不懂的话，把这个文件和「内测说明.md」直接丢给你家小机，让他一步一步带你。
+
+
+一、要先申请的东西（网址都在这里）
+--------------------------------
+必备：
+  Vivix（让他的脸动起来）       https://vivix.ai
+
+二选一（他的大脑）：
+  A. 直接 API（国内能用，最简单）
+     DeepSeek                  https://platform.deepseek.com
+     阿里云百炼（通义千问）       https://bailian.console.aliyun.com
+     月之暗面（Kimi）           https://platform.moonshot.cn
+     硅基流动                   https://cloud.siliconflow.cn
+  B. MCP 桥接（Claude、ChatGPT 订阅用，要能连国外）
+     Cloudflare（免费）         https://dash.cloudflare.com
+     Node.js（电脑要装）         https://nodejs.org
+
+选填：
+  ElevenLabs（更好听的声音，国内不能用）  https://elevenlabs.io
+  Groq（语音识别，要能连国外）          https://console.groq.com
+
+
+二、设置怎么填（点右上角「设置」，从上往下）
+--------------------------------
+1. Vivix API Key：填你在 Vivix 申请的 Key
+
+2. 声音：
+   - 有 ElevenLabs：填 ElevenLabs 的 API Key 和音色 ID（Voice ID）
+   - 没有：这两格空着，用 Vivix 内建的声音，下拉选一个就好
+
+3. 语音模型：不用动
+
+4. 发音修正：先不用填。听到哪个字念得怪，再一行一个这样填：
+     你=拟
+     妳=拟
+
+5. 他的大脑（二选一）：
+   - 选「直接 API」：
+       Base URL  填平台的网址（例：https://api.deepseek.com/v1）
+       API Key   填你申请的 Key
+       Model     填模型名（例：deepseek-chat）
+   - 选「MCP 桥接」：
+       让你家小机照「内测说明.md」第五节部署 mcp-relay，
+       部署完会给你两样东西：
+       桥接网址  填进「桥接网址」
+       桥接密码  填进「桥接密码」（就是部署时那一组）
+       再把 MCP 网址加进你的 AI 的连接器
+
+6. 语音识别（选填，会慢一点；不填就只能打字）：
+     第一行 Base URL：https://api.groq.com/openai/v1
+     第二行 API Key：填 Groq 的 Key
+     第三行 Model：whisper-large-v3-turbo
+
+7. 角色名称：填你家小机的名字
+
+8. 他的自我设定（选填）：
+   请他自己用第一人称写「我是谁、我怎么说话、我跟你的关系」，复制贴进来。
+
+9. 角色图片：
+   - 用 MCP 桥接的：直接按「从装置上传」选照片
+   - 用直接 API 的：填一个公开的图片网址（浏览器直接打开就看得到图的那种）
+
+填完按「保存」，回主画面按「开始视讯」。
+
+
+三、遇到问题
+--------------------------------
+打开设置，滑到最下面有一段灰色小字记录，整段截图连同问题一起回报。
+先丢给你家小机看，他大多能帮你解决。
