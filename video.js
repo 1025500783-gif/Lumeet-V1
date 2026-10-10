@@ -58,6 +58,17 @@ function errText(data) {
   return (s || '').slice(0, 300);
 }
 
+// 常見錯誤翻成看得懂的中文，看不出原因就回傳空字串
+function friendlyHint(service, status, data) {
+  const s = errText(data).toLowerCase();
+  if (status === 402 || /insufficient|balance|quota|credit|余额|餘額/.test(s)) {
+    return `${service} 餘額或額度不足，請到 ${service} 後台儲值或確認額度`;
+  }
+  if (status === 401 || status === 403) return `${service} Key 錯誤或沒有權限，請重新複製貼上`;
+  if (status === 429) return `${service} 請求太頻繁或額度用完，稍等一下再試`;
+  return '';
+}
+
 async function httpJson(url, { method = 'GET', headers = {}, body, timeoutMs = 60000 } = {}) {
   const payload = body === undefined ? undefined : JSON.stringify(body);
   if (isNativeApp) {
@@ -253,7 +264,10 @@ async function createVivixSession() {
   });
 
   if (!res.ok) {
-    throw new Error(`Vivix session 建立失敗 (${res.status}): ${errText(res.data)}`);
+    const hint = friendlyHint('Vivix', res.status, res.data);
+    const err = new Error(`Vivix session 建立失敗 (${res.status}): ${errText(res.data)}`);
+    err.hint = hint;
+    throw err;
   }
 
   return res.data.data || res.data;
@@ -806,8 +820,9 @@ async function startCall() {
       setStatus('沒填語音辨識 Key，只能打字');
     }
   } catch (e) {
+    if (e.hint) log(`⚠ ${e.hint}`);
     log(`開始通話失敗: ${e.message}`);
-    setStatus('連線失敗');
+    setStatus(e.hint || '連線失敗');
     el('connection-status').textContent = '失敗';
     await endCall();
   }
@@ -858,7 +873,7 @@ async function probeOne(name, enabled, fn) {
       log(`✓ ${name}：連線正常`);
       return `${name}: OK`;
     }
-    const hint = res.status === 401 || res.status === 403 ? 'Key 或密碼錯誤' : `HTTP ${res.status}`;
+    const hint = friendlyHint(name, res.status, res.data) || `HTTP ${res.status}`;
     log(`❌ ${name}：${hint}`);
     return `${name}: ${hint}`;
   } catch (e) {
@@ -884,7 +899,7 @@ async function probeConnections() {
       headers: vivixHeaders(),
       body: { model: 'vivix-a1-stream', dry_run: true },
     });
-    return { ok: r.ok || r.status === 400 || r.status === 422, status: r.status };
+    return { ok: r.ok || r.status === 400 || r.status === 422, status: r.status, data: r.data };
   }));
 
   results.push(await probeOne('ElevenLabs', !!cfg.elKey, () =>
