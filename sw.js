@@ -1,7 +1,8 @@
-const CACHE_NAME = 'lumeet-shell-v2';
+const CACHE_NAME = 'lumeet-shell-v3';
 const SHELL = [
   './',
   './index.html',
+  './tailwind.css',
   './video.js',
   './vad.js',
   './manifest.webmanifest',

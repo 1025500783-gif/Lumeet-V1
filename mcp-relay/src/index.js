@@ -343,7 +343,9 @@ export default {
           ? 'text/html; charset=utf-8'
           : file.endsWith('.webmanifest')
             ? 'application/manifest+json; charset=utf-8'
-            : 'text/javascript; charset=utf-8';
+            : file.endsWith('.css')
+              ? 'text/css; charset=utf-8'
+              : 'text/javascript; charset=utf-8';
         return new Response(WEB[file], { headers: { 'Content-Type': type, 'Cache-Control': 'no-cache' } });
       }
     }

@@ -1,6 +1,6 @@
 import { cpSync, existsSync, mkdirSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
 
-const FILES = ['index.html', 'video.js', 'vad.js', 'manifest.webmanifest', 'sw.js'];
+const FILES = ['index.html', 'tailwind.css', 'video.js', 'vad.js', 'manifest.webmanifest', 'sw.js'];
 const PAGE_ONLY_FILES = ['_headers'];
 const ICONS = ['apple-touch-icon.png', 'icon-192.png', 'icon-512.png'];
 
