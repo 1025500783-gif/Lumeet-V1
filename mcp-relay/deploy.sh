@@ -4,6 +4,8 @@ set -euo pipefail
 cd "$(dirname "$0")"
 
 WRANGLER="npx --yes wrangler"
+# 明確指定設定檔：有些環境（例如手機上的 Linux 終端機）wrangler 找不到同資料夾的 wrangler.toml
+CFG="--config $PWD/wrangler.toml"
 step() { printf '\n\033[1m== %s\033[0m\n' "$1"; }
 
 step "1/4 安裝套件"
@@ -15,16 +17,16 @@ if ! $WRANGLER whoami 2>/dev/null | grep -qi "associated with"; then
 fi
 
 step "3/4 部署"
-DEPLOY_OUT=$($WRANGLER deploy 2>&1 | tee /dev/stderr)
+DEPLOY_OUT=$($WRANGLER deploy $CFG 2>&1 | tee /dev/stderr)
 URL=$(printf '%s' "$DEPLOY_OUT" | grep -o 'https://[^ ]*workers\.dev' | head -1)
 
 step "4/4 設定密碼"
 SECRET=""
-if $WRANGLER secret list 2>/dev/null | grep -q '"RELAY_SECRET"'; then
+if $WRANGLER secret list $CFG 2>/dev/null | grep -q '"RELAY_SECRET"'; then
   echo "之前已設定過密碼（只在第一次部署時顯示）。忘記的話刪掉重設：npx wrangler secret delete RELAY_SECRET，再跑一次本腳本"
 else
   SECRET=$(openssl rand -hex 24)
-  printf '%s' "$SECRET" | $WRANGLER secret put RELAY_SECRET
+  printf '%s' "$SECRET" | $WRANGLER secret put RELAY_SECRET $CFG
 fi
 
 URL=${URL:-https://<你的網址>.workers.dev}
