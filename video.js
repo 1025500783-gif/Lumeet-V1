@@ -64,7 +64,16 @@ function friendlyHint(service, status, data) {
   if (status === 402 || /insufficient|balance|quota|credit|余额|餘額/.test(s)) {
     return `${service} 餘額或額度不足，請到 ${service} 後台儲值或確認額度`;
   }
-  if (status === 401 || status === 403) return `${service} Key 錯誤或沒有權限，請重新複製貼上`;
+  if (/unusual activity|detected_unusual/.test(s)) {
+    return `${service} 擋下了這次連線（免費方案透過 VPN／代理使用會被拒絕）：付費方案，或改用 Vivix 內建聲音`;
+  }
+  if (/missing_permissions|permission/.test(s)) {
+    return `${service} 這把 Key 權限不夠：到後台把 Text to Speech 和 Voices 權限打開（${errText(data).slice(0, 120)}）`;
+  }
+  if (status === 401 || status === 403) {
+    const raw = errText(data).slice(0, 120);
+    return `${service} Key 錯誤或沒有權限，請重新複製貼上${raw ? `（${raw}）` : ''}`;
+  }
   if (status === 429) return `${service} 請求太頻繁或額度用完，稍等一下再試`;
   return '';
 }
