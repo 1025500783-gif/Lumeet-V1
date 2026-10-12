@@ -38,7 +38,12 @@ SECRET=""
 if $WRANGLER secret list $CFG 2>/dev/null | grep -q '"RELAY_SECRET"'; then
   echo "之前已設定過密碼（只在第一次部署時顯示）。忘記的話刪掉重設：npx wrangler secret delete RELAY_SECRET，再跑一次本腳本"
 else
-  SECRET=$(openssl rand -hex 24)
+  # 有些手機終端機沒裝 openssl，退回用 /dev/urandom；產生不出來就停下，免得設成空密碼
+  SECRET=$(openssl rand -hex 24 2>/dev/null || head -c 24 /dev/urandom | od -An -tx1 | tr -d ' \n')
+  if [ ${#SECRET} -ne 48 ]; then
+    echo "產生密碼失敗，請先安裝 openssl 再跑一次本腳本" >&2
+    exit 1
+  fi
   printf '%s' "$SECRET" | $WRANGLER secret put RELAY_SECRET $CFG
 fi
 
