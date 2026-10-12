@@ -875,7 +875,7 @@ async function probeOne(name, enabled, fn) {
       log(`✓ ${name}：連線正常`);
       return `${name}: OK`;
     }
-    const hint = friendlyHint(name, res.status, res.data) || `HTTP ${res.status}`;
+    const hint = res.data?.notRelay || friendlyHint(name, res.status, res.data) || `HTTP ${res.status}`;
     log(`❌ ${name}：${hint}`);
     return `${name}: ${hint}`;
   } catch (e) {
@@ -910,10 +910,16 @@ async function probeConnections() {
     })));
 
   if (cfg.aiMode === 'mcp') {
-    results.push(await probeOne('MCP 橋接', !!(cfg.relayUrl && cfg.relaySecret), () =>
-      httpJson(relayUrl('/app/replies?after=0&wait=0'), {
+    // 只看 2xx 不夠：填錯成別的 Worker（例如記憶庫）也會回 200，要確認回應長得像橋接器
+    results.push(await probeOne('MCP 橋接', !!(cfg.relayUrl && cfg.relaySecret), async () => {
+      const r = await httpJson(relayUrl('/app/replies?after=0&wait=0'), {
         headers: { 'Authorization': `Bearer ${cfg.relaySecret}` },
-      })));
+      });
+      if (r.ok && !Array.isArray(r.data?.replies)) {
+        return { ok: false, status: r.status, data: { notRelay: '這個網址不是 MCP 橋接器（要填 mcp-relay 部署出來的網址）' } };
+      }
+      return r;
+    }));
   } else {
     results.push(await probeOne('模型 API', !!(cfg.llmBase && cfg.llmKey), () =>
       httpJson(modelsUrl(cfg.llmBase), { headers: { 'Authorization': `Bearer ${cfg.llmKey}` } })));
