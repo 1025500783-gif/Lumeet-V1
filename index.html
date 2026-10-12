@@ -291,6 +291,13 @@
       </select>
       <label class="block text-xs text-[#bdb3aa] mb-1" for="cfg-vivix-voice-custom">或 Vivix 複製聲音的 Voice ID（選填，填了就用這個）</label>
       <input id="cfg-vivix-voice-custom" type="text" autocomplete="off" class="w-full h-11 rounded-xl bg-black/20 border-white/10 text-sm mb-3" placeholder="在 Vivix 複製自己的聲音後取得">
+      <p class="text-[11px] text-[#8f857d] mb-2">MOSS（選填）：填了 Key 就改用 MOSS 的聲音（優先於 ElevenLabs）。中國大陸可以直連，音色在 MOSS 官網的音色庫挑或自己建立，複製音色 ID 貼到下面。</p>
+      <label class="block text-xs text-[#bdb3aa] mb-1" for="cfg-moss-key">MOSS API Key</label>
+      <input id="cfg-moss-key" type="password" autocomplete="off" class="w-full h-11 rounded-xl bg-black/20 border-white/10 text-sm mb-2" placeholder="sk-...">
+      <label class="block text-xs text-[#bdb3aa] mb-1" for="cfg-moss-voice">MOSS 音色 ID</label>
+      <input id="cfg-moss-voice" type="text" autocomplete="off" class="w-full h-11 rounded-xl bg-black/20 border-white/10 text-sm mb-2" placeholder="例：94aa4989-c7e9-...">
+      <label class="block text-xs text-[#bdb3aa] mb-1" for="cfg-moss-model">MOSS 模型</label>
+      <input id="cfg-moss-model" type="text" autocomplete="off" class="w-full h-11 rounded-xl bg-black/20 border-white/10 text-sm mb-3" placeholder="moss-tts-1.5-flash">
       <p class="text-[11px] text-[#8f857d] mb-2">ElevenLabs（選填）：填了 Key 就改用 ElevenLabs 的聲音。中國大陸無法使用。</p>
       <label class="block text-xs text-[#bdb3aa] mb-1" for="cfg-el-key">API Key</label>
       <input id="cfg-el-key" type="password" autocomplete="off" class="w-full h-11 rounded-xl bg-black/20 border-white/10 text-sm mb-2" placeholder="sk_...">

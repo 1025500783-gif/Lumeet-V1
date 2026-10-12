@@ -1,8 +1,11 @@
 // video.js — AI 視訊通話前端管線
-// 流程：使用者語音/文字 → STT → LLM 或 MCP 橋接 → ElevenLabs TTS → Vivix 對嘴 → TRTC 視訊
+// 流程：使用者語音/文字 → STT → LLM 或 MCP 橋接 → ElevenLabs／MOSS TTS → Vivix 對嘴 → TRTC 視訊
 
 const VIVIX_BASE = 'https://api.vivix.ai/v1';
 const ELEVENLABS_BASE = 'https://api.elevenlabs.io/v1';
+// MOSS（OpenMOSS 的語音合成）：中國大陸可直連，海外版帳號也用同一個網址
+const MOSS_BASE = 'https://api.mosi.cn/v1';
+const DEFAULT_MOSS_MODEL = 'moss-tts-1.5-flash';
 const DEFAULT_STT_MODEL = 'whisper-large-v3-turbo';
 // 只填 Key 沒填網址時用 Groq（輸入框的灰字範例很容易被當成已經填了）
 const DEFAULT_STT_BASE = 'https://api.groq.com/openai/v1';
@@ -11,8 +14,11 @@ const DEFAULT_TTS_MODEL = 'eleven_turbo_v2_5';
 // 沒填 ElevenLabs 時用 Vivix 內建聲音（Qwen Audio），中國大陸也能用
 const DEFAULT_VIVIX_VOICE = 'longanhuan_v3.6';
 
+function useMoss() {
+  return !!cfg.mossKey;
+}
 function useElevenLabs() {
-  return !!cfg.elKey;
+  return !useMoss() && !!cfg.elKey;
 }
 const TTS_LANG_LOCKABLE = ['eleven_turbo_v2_5', 'eleven_flash_v2_5'];
 const DEFAULT_TTS_FIX = ''; // 純淨版不預設；念歪的字由使用者自己在設定加
@@ -139,6 +145,9 @@ function readFormSettings() {
     elKey:       el('cfg-el-key').value.trim(),
     elVoice:     el('cfg-el-voice').value.trim(),
     elModel:     el('cfg-el-model').value,
+    mossKey:     el('cfg-moss-key').value.trim(),
+    mossVoice:   el('cfg-moss-voice').value.trim(),
+    mossModel:   el('cfg-moss-model').value.trim(),
     vivixVoice:  el('cfg-vivix-voice-custom').value.trim() || el('cfg-vivix-voice').value,
     vivixVoicePick: el('cfg-vivix-voice').value,
     vivixVoiceCustom: el('cfg-vivix-voice-custom').value.trim(),
@@ -164,6 +173,9 @@ function fillForm(s) {
   el('cfg-el-key').value     = s.elKey     || '';
   el('cfg-el-voice').value   = s.elVoice   || '';
   el('cfg-el-model').value   = s.elModel   || DEFAULT_TTS_MODEL;
+  el('cfg-moss-key').value   = s.mossKey   || '';
+  el('cfg-moss-voice').value = s.mossVoice || '';
+  el('cfg-moss-model').value = s.mossModel || '';
   el('cfg-vivix-voice').value = s.vivixVoicePick || DEFAULT_VIVIX_VOICE;
   el('cfg-vivix-voice-custom').value = s.vivixVoiceCustom || '';
   el('cfg-el-fix').value     = s.elFix ?? DEFAULT_TTS_FIX;
@@ -640,6 +652,64 @@ async function textToSpeech(text) {
   return res.data;
 }
 
+// ─── MOSS TTS ───────────────────────────────────────────
+
+// 網頁版：MOSS 不允許網頁直接呼叫，跟 Vivix 一樣交給自己的橋接器轉送
+function mossViaRelay() {
+  return !isNativeApp && !!relayBase();
+}
+
+function mossRequest(input) {
+  const viaRelay = mossViaRelay();
+  return httpJson(`${viaRelay ? relayUrl('/moss/v1') : MOSS_BASE}/audio/speech`, {
+    method: 'POST',
+    headers: {
+      'Authorization': `Bearer ${cfg.mossKey}`,
+      'Content-Type': 'application/json',
+      ...(viaRelay ? { 'X-Relay-Secret': cfg.relaySecret } : {}),
+    },
+    body: {
+      model: cfg.mossModel || DEFAULT_MOSS_MODEL,
+      input,
+      voice_id: cfg.mossVoice,
+      response_format: 'mp3',
+      delivery_method: 'url',
+    },
+  });
+}
+
+// 回應格式文件沒寫清楚：先找音檔網址，找不到再找 base64 音檔
+function findMossAudio(data) {
+  let url = '', b64 = '';
+  const walk = (v, key = '') => {
+    if (url) return;
+    if (typeof v === 'string') {
+      if (/^https?:\/\//.test(v) && /url|audio|file|link/i.test(key)) url = v;
+      else if (!b64 && v.length > 200 && /audio|data|base64/i.test(key)) b64 = v.replace(/^data:[^,]*,/, '');
+    } else if (v && typeof v === 'object') {
+      for (const [k, x] of Object.entries(v)) walk(x, k);
+    }
+  };
+  walk(data);
+  return { url, b64 };
+}
+
+async function mossSpeech(text) {
+  const res = await mossRequest(applyTtsFix(text));
+  if (!res.ok) {
+    if (res.traceId) log(`MOSS trace_id：${res.traceId}`);
+    throw new Error(`MOSS 語音合成失敗 (${res.status}): ${errText(res.data)}`);
+  }
+  const { url, b64 } = findMossAudio(res.data);
+  if (b64) return b64;
+  if (!url) throw new Error(`MOSS 回應裡找不到音檔：${errText(res.data)}`);
+  const audio = mossViaRelay()
+    ? await httpBase64(relayUrl(`/moss-audio?u=${encodeURIComponent(url)}`), { method: 'GET', headers: { 'X-Relay-Secret': cfg.relaySecret } })
+    : await httpBase64(url, { method: 'GET' });
+  if (!audio.ok) throw new Error(`MOSS 音檔下載失敗 (${audio.status})`);
+  return audio.data;
+}
+
 // ─── 讓角色說話（依序排隊，不互相蓋掉） ─────────────────
 
 function speak(text, action) {
@@ -649,7 +719,10 @@ function speak(text, action) {
       setSubtitle(text);
       el('tag-action').textContent = action || '';
       let vocal;
-      if (useElevenLabs()) {
+      if (useMoss()) {
+        setStatus('語音合成中⋯');
+        vocal = { type: 'audio', audio: await mossSpeech(text), mime_type: 'audio/mpeg' };
+      } else if (useElevenLabs()) {
         setStatus('語音合成中⋯');
         vocal = { type: 'audio', audio: await textToSpeech(text), mime_type: 'audio/mpeg' };
       } else {
@@ -782,7 +855,8 @@ async function startCall() {
 
   const missing = [];
   if (!cfg.vivixKey) missing.push('Vivix API Key');
-  if (cfg.elKey && !cfg.elVoice) missing.push('ElevenLabs Voice ID');
+  if (cfg.elKey && !cfg.mossKey && !cfg.elVoice) missing.push('ElevenLabs Voice ID');
+  if (cfg.mossKey && !cfg.mossVoice) missing.push('MOSS 音色 ID');
   if (cfg.aiMode === 'mcp') {
     if (!relayBase()) missing.push('橋接網址');
     if (!cfg.relaySecret) missing.push('橋接密碼');
@@ -923,7 +997,13 @@ async function probeConnections() {
     return { ok: r.ok || r.status === 400 || r.status === 422, status: r.status, data: r.data };
   }));
 
-  results.push(await probeOne('ElevenLabs', !!cfg.elKey, () =>
+  // MOSS 沒有輕量的驗證端點；送空字串，400 代表 Key 有效只是內容不完整（不會扣點）
+  results.push(await probeOne('MOSS', !!cfg.mossKey, async () => {
+    const r = await mossRequest('');
+    return { ...r, ok: r.ok || r.status === 400 || r.status === 422 };
+  }));
+
+  results.push(await probeOne('ElevenLabs', !!cfg.elKey && !cfg.mossKey, () =>
     httpJson(cfg.elVoice ? `${ELEVENLABS_BASE}/voices/${encodeURIComponent(cfg.elVoice)}` : `${ELEVENLABS_BASE}/voices`, {
       headers: { 'xi-api-key': cfg.elKey },
     })));

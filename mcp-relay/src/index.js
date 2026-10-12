@@ -376,6 +376,33 @@ export default {
       return withCors(res);
     }
 
+    // 網頁版用：MOSS 語音合成也不允許網頁直接呼叫，同樣由這裡轉送
+    if (parts[0] === 'moss' || parts[0] === 'moss-audio') {
+      const relaySecret = request.headers.get('X-Relay-Secret') || '';
+      if (!env.RELAY_SECRET || !relaySecret || !(await safeEqual(relaySecret, env.RELAY_SECRET))) {
+        return withCors(Response.json({ error: 'Unauthorized' }, { status: 401 }));
+      }
+      if (parts[0] === 'moss') {
+        if (parts.slice(1).join('/') !== 'v1/audio/speech' || request.method !== 'POST') {
+          return withCors(Response.json({ error: 'not found' }, { status: 404 }));
+        }
+        const res = await fetch('https://api.mosi.cn/v1/audio/speech', {
+          method: 'POST',
+          headers: {
+            'Authorization': request.headers.get('Authorization') || '',
+            'Content-Type': 'application/json',
+          },
+          body: request.body,
+        });
+        return withCors(res);
+      }
+      // 下載 MOSS 產生的音檔（只接受 https 網址）
+      const target = url.searchParams.get('u') || '';
+      if (!/^https:\/\//.test(target)) return withCors(Response.json({ error: 'bad url' }, { status: 400 }));
+      const res = await fetch(target);
+      return withCors(new Response(res.body, { status: res.status, headers: { 'Content-Type': res.headers.get('Content-Type') || 'audio/mpeg' } }));
+    }
+
     // claude.ai 自訂連接器無法帶 header，所以也接受 /mcp/<secret>
     let secret = (request.headers.get('Authorization') || '').replace(/^Bearer\s+/i, '');
     if (parts[0] === 'mcp' && parts[1]) secret = parts[1];
