@@ -290,10 +290,11 @@ async function closeVivixSession() {
 function connectVivixWs(controlUrl, clientSecret) {
   const url = new URL(controlUrl);
   url.searchParams.set('token', clientSecret);
+  log(`Vivix WebSocket 連線中：${url.host}`);
   vivixWs = new WebSocket(url);
 
   vivixWs.onopen = () => log('Vivix WebSocket 已連線');
-  vivixWs.onclose = () => log('Vivix WebSocket 已斷線');
+  vivixWs.onclose = (e) => log(`Vivix WebSocket 已斷線（code ${e.code}${e.reason ? `，${e.reason}` : ''}）`);
   vivixWs.onerror = (e) => log(`Vivix WS 錯誤: ${e.message || '未知'}`);
   vivixWs.onmessage = (evt) => {
     try {
@@ -361,6 +362,7 @@ async function enterTrtcRoom(trtc) {
     log('遠端視訊中斷');
   });
 
+  log('進入 TRTC 房間中⋯');
   await rtc.enterRoom({
     sdkAppId: Number(trtc.sdk_app_id),
     userId: trtc.user_id,
