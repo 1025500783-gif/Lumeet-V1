@@ -307,6 +307,7 @@ const CORS = {
   'Access-Control-Allow-Origin': '*',
   'Access-Control-Allow-Methods': 'GET, POST, OPTIONS',
   'Access-Control-Allow-Headers': 'Authorization, Content-Type, X-Relay-Secret',
+  'Access-Control-Expose-Headers': 'X-Trace-Id',
 };
 
 function withCors(res) {

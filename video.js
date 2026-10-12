@@ -76,10 +76,18 @@ async function httpJson(url, { method = 'GET', headers = {}, body, timeoutMs = 6
       url, method, headers, data: payload, dataType: 'json',
       connectTimeout: 15000, readTimeout: timeoutMs,
     });
-    return { ok: r.status >= 200 && r.status < 300, status: r.status, data: parseMaybeJson(r.data) };
+    return { ok: r.status >= 200 && r.status < 300, status: r.status, data: parseMaybeJson(r.data), traceId: traceIdOf(r.headers) };
   }
   const res = await fetch(url, { method, headers, body: payload });
-  return { ok: res.ok, status: res.status, data: parseMaybeJson(await res.text()) };
+  return { ok: res.ok, status: res.status, data: parseMaybeJson(await res.text()), traceId: res.headers.get('x-trace-id') || '' };
+}
+
+// Vivix 客服查問題要 X-Trace-Id，出錯時記進日誌
+function traceIdOf(headers) {
+  for (const [k, v] of Object.entries(headers || {})) {
+    if (k.toLowerCase() === 'x-trace-id') return String(v);
+  }
+  return '';
 }
 
 async function httpBase64(url, { method = 'POST', headers = {}, body } = {}) {
@@ -265,6 +273,7 @@ async function createVivixSession() {
 
   if (!res.ok) {
     const hint = friendlyHint('Vivix', res.status, res.data);
+    if (res.traceId) log(`Vivix X-Trace-Id：${res.traceId}`);
     const err = new Error(`Vivix session 建立失敗 (${res.status}): ${errText(res.data)}`);
     err.hint = hint;
     throw err;
@@ -901,6 +910,7 @@ async function probeConnections() {
       headers: vivixHeaders(),
       body: { model: 'vivix-a1-stream', dry_run: true },
     });
+    if (r.traceId && !(r.ok || r.status === 400 || r.status === 422)) log(`Vivix X-Trace-Id：${r.traceId}`);
     return { ok: r.ok || r.status === 400 || r.status === 422, status: r.status, data: r.data };
   }));
 
