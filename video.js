@@ -989,6 +989,34 @@ document.addEventListener('DOMContentLoaded', () => {
   el('btn-end').addEventListener('click', endCall);
 
   // 設定面板
+  el('btn-copy-mcp').addEventListener('click', async () => {
+    const base = el('cfg-relay-url').value.trim().replace(/\/+$/, '') || relayBase();
+    const secret = el('cfg-relay-secret').value.trim();
+    if (!base || !secret) {
+      log('先填橋接網址和橋接密碼，再按複製');
+      return;
+    }
+    const mcpUrl = `${base}/mcp/${secret}`;
+    let copied = false;
+    try {
+      await navigator.clipboard.writeText(mcpUrl);
+      copied = true;
+    } catch {
+      const t = document.createElement('textarea');
+      t.value = mcpUrl;
+      document.body.appendChild(t);
+      t.select();
+      try { copied = document.execCommand('copy'); } catch {}
+      t.remove();
+    }
+    log(copied ? 'MCP 網址已複製，貼到你的 AI 的 MCP 設定' : '複製失敗，請手動組：橋接網址/mcp/橋接密碼');
+    if (copied) {
+      const btn = el('btn-copy-mcp');
+      btn.textContent = '已複製 ✓';
+      setTimeout(() => { btn.textContent = '複製 MCP 網址'; }, 2000);
+    }
+  });
+
   el('btn-menu').addEventListener('click', () => {
     el('settings-sheet').classList.remove('is-hidden');
   });
