@@ -13,7 +13,20 @@ npm install --silent
 
 step "2/4 Cloudflare 登入"
 if ! $WRANGLER whoami 2>/dev/null | grep -qi "associated with"; then
-  $WRANGLER login
+  if ! $WRANGLER login; then
+    # 手機上的 Linux 終端機（Termux、Operit 等）瀏覽器授權常常接不回來，改用 API Token
+    cat <<'MSG'
+
+登入失敗。手機上的終端機常常這樣，改用 API Token 登入：
+  1. 瀏覽器打開 https://dash.cloudflare.com/profile/api-tokens
+  2. Create Token → 模板選「Edit Cloudflare Workers」→ 建立後複製 Token（只顯示一次）
+  3. 在終端機執行（把 你的Token 換成剛剛那串），再跑一次本腳本：
+       export CLOUDFLARE_API_TOKEN=你的Token
+       bash deploy.sh
+Token 等於你 Cloudflare 帳號的鑰匙，不要截圖、不要給任何人。
+MSG
+    exit 1
+  fi
 fi
 
 step "3/4 部署"
