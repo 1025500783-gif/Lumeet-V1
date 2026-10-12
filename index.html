@@ -15,7 +15,8 @@
   <link rel="icon" type="image/png" href="icon-192.png">
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-  <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+TC:wght@400;500;600;700&family=Noto+Serif+TC:wght@500;600&display=swap" rel="stylesheet">
+  <!-- 字型不擋畫面：大陸連不到 Google 也會直接用系統字型 -->
+  <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+TC:wght@400;500;600;700&family=Noto+Serif+TC:wght@500;600&display=swap" rel="stylesheet" media="print" onload="this.media='all'">
   <link rel="stylesheet" href="./tailwind.css">
   <style>
     /* 網頁版（iPhone）：按住說話，長按不跳出選單 */
@@ -341,7 +342,11 @@
 
       <!-- 語音辨識 -->
       <p class="text-[11px] font-semibold text-[#d6cfc7] tracking-wider uppercase mb-2">語音辨識（選填）</p>
-      <p class="text-[11px] text-[#8f857d] mb-2">不填就只能打字。Groq（有免費額度）或 OpenAI 的 Whisper 都可以。</p>
+      <p class="text-[11px] text-[#8f857d] mb-2">不填就只能打字。Groq、OpenAI 的 Whisper 都可以；中國大陸請用硅基流動（不用翻牆，SenseVoice 模型免費）。</p>
+      <div class="flex gap-2 mb-2">
+        <button type="button" data-stt-preset="groq" class="flex-1 h-9 rounded-full bg-white/10 active:bg-white/20 border border-white/10 text-xs text-[#eee7e0]">Groq</button>
+        <button type="button" data-stt-preset="siliconflow" class="flex-1 h-9 rounded-full bg-white/10 active:bg-white/20 border border-white/10 text-xs text-[#eee7e0]">硅基流動（大陸）</button>
+      </div>
       <label class="block text-xs text-[#bdb3aa] mb-1" for="cfg-stt-base">Base URL</label>
       <input id="cfg-stt-base" type="url" autocomplete="off" class="w-full h-11 rounded-xl bg-black/20 border-white/10 text-sm mb-2" placeholder="例：https://api.groq.com/openai/v1">
       <label class="block text-xs text-[#bdb3aa] mb-1" for="cfg-stt-key">API Key</label>
@@ -391,7 +396,7 @@
 
   <button id="sound" type="button" class="is-hidden fixed z-[60] top-4 left-1/2 -translate-x-1/2 min-h-11 px-5 rounded-full bg-[#f5f0ea] text-[#241f1c] text-sm font-semibold shadow-xl">點一下開聲音</button>
 
-  <script src="https://cdn.jsdelivr.net/npm/trtc-sdk-v5@5.20.1/trtc.js"></script>
+  <script src="./vendor/trtc.js"></script>
   <script src="./vad.js"></script>
   <script type="module" src="./video.js"></script>
   <script>

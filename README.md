@@ -37,7 +37,7 @@ TRTC → 即時視訊串流到你的螢幕
 | 角色圖片 | 必填 | 公開 HTTPS 圖片網址（Vivix 伺服器要讀得到） |
 | 模型 API | 只有「直接 API」要填 | 任何 OpenAI 相容端點：OpenAI、DeepSeek、Groq、OpenRouter⋯⋯ |
 | MCP 橋接網址 + 密碼 | 只有「MCP 橋接」要填 | 自己部署，見下方 |
-| 語音辨識 | 選填，不填只能打字 | [Groq](https://console.groq.com)（有免費額度）或 OpenAI |
+| 語音辨識 | 選填，不填只能打字 | [Groq](https://console.groq.com)（有免費額度）或 OpenAI；中國大陸用 [硅基流動](https://cloud.siliconflow.cn)（直連，SenseVoice 免費），設定頁有一鍵帶入 |
 
 ## 快速開始
 

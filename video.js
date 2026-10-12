@@ -1005,6 +1005,18 @@ document.addEventListener('DOMContentLoaded', () => {
   el('btn-end').addEventListener('click', endCall);
 
   // 設定面板
+  // 語音辨識一鍵帶入：只填網址和模型，Key 還是要自己填
+  const STT_PRESETS = {
+    groq: { base: 'https://api.groq.com/openai/v1', model: 'whisper-large-v3-turbo' },
+    siliconflow: { base: 'https://api.siliconflow.cn/v1', model: 'FunAudioLLM/SenseVoiceSmall' },
+  };
+  document.querySelectorAll('[data-stt-preset]').forEach(btn => btn.addEventListener('click', () => {
+    const p = STT_PRESETS[btn.dataset.sttPreset];
+    el('cfg-stt-base').value = p.base;
+    el('cfg-stt-model').value = p.model;
+    log(`已帶入 ${btn.textContent} 的網址和模型，再填 API Key 後按儲存`);
+  }));
+
   el('btn-copy-mcp').addEventListener('click', async () => {
     const base = el('cfg-relay-url').value.trim().replace(/\/+$/, '') || relayBase();
     const secret = el('cfg-relay-secret').value.trim();

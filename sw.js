@@ -1,10 +1,11 @@
-const CACHE_NAME = 'lumeet-shell-v3';
+const CACHE_NAME = 'lumeet-shell-v4';
 const SHELL = [
   './',
   './index.html',
   './tailwind.css',
   './video.js',
   './vad.js',
+  './vendor/trtc.js',
   './manifest.webmanifest',
   './apple-touch-icon.png',
   './icon-192.png',
