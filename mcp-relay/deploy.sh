@@ -47,11 +47,15 @@ SHOW=${SECRET:-<你的密碼>}
 
 printf '\n\033[1m完成！以下資料只顯示這一次，請存好\033[0m\n\n'
 echo "【App 設定 → AI 接入方式選「MCP 橋接」】"
-echo "  橋接網址：$URL"
-echo "  橋接密碼：$SHOW"
+# 值各自單獨一行：手機終端機很窄，跟標籤放同一行會被折斷，複製時就少一截
+echo "  橋接網址："
+echo "$URL"
+echo "  橋接密碼："
+echo "$SHOW"
 echo
 echo "【AI 端加入 MCP】"
-echo "  MCP 網址：$URL/mcp/$SHOW"
+echo "  MCP 網址："
+echo "$URL/mcp/$SHOW"
 echo
 echo "  Claude Code："
 echo "    claude mcp add --transport http video-call $URL/mcp/$SHOW"
@@ -63,3 +67,12 @@ echo
 echo "  claude.ai：設定 → 連接器 → 新增自訂連接器，貼上 MCP 網址"
 echo
 echo "通話前跟你的 AI 說：「進入視訊通話模式」"
+
+# 另存成檔案，之後忘了或終端機不好複製，可以用檔案管理打開
+if [ -n "$SECRET" ]; then
+  INFO="$HOME/lumeet-relay-info.txt"
+  printf '橋接網址\n%s\n\n橋接密碼\n%s\n\nMCP 網址\n%s\n' "$URL" "$SECRET" "$URL/mcp/$SECRET" > "$INFO"
+  chmod 600 "$INFO"
+  echo
+  echo "以上資料也存到了：$INFO（含密碼，不要分享給別人）"
+fi
