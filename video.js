@@ -84,6 +84,8 @@ function errCode(data) {
 
 function errKind(status, data) {
   const s = errText(data).toLowerCase();
+  // 橋接（mcp-relay）自己擋下來的：密碼不對，不是 Vivix／MOSS 的 Key 問題
+  if (status === 401 && data?.error === 'Unauthorized') return 'relay';
   const vivix = VIVIX_CODE[errCode(data)];
   if (vivix) return vivix;
   if (status === 402 || /insufficient.?(balance|fund|credit|quota)|not enough (credit|balance)|balance|quota_exceeded|exceeded your (current )?quota|余额|餘額|欠费|欠費|arrear|payment required|credits?/.test(s)) return 'money';
@@ -103,6 +105,7 @@ function friendlyHint(service, status, data) {
     case 'money': return `💸 ${service} 沒錢了：餘額或額度用完，到 ${service} 後台儲值`;
     case 'vpn': return `🌐 ${service} 擋下了這次連線：免費方案透過 VPN／代理使用會被拒絕，要付費方案或換別家`;
     case 'perm': return `🚫 ${service} 這把 Key 權限不夠：到後台把${service === 'ElevenLabs' ? '「文字轉語音」和「音色」' : '需要的'}權限打開${tail}`;
+    case 'relay': return `🔐 橋接密碼不對：被你的 MCP 橋接擋下來了，不是 ${service} 的 Key 問題。檢查設定裡的「橋接網址」和「橋接密碼」是不是你自己部署印出來的那組`;
     case 'key': return `🔑 ${service} 的 Key 不對：重新複製貼上，前後不要有空格${tail}`;
     case 'busy': return `⏳ ${service} 請求太頻繁：等一下再試`;
     case 'image': return `🖼 ${service} 讀不到角色圖片：確認圖片網址用瀏覽器打得開`;
@@ -1044,7 +1047,7 @@ function modelsUrl(base) {
 }
 
 // Key 本身有問題：就算回 400 也不能算測試通過
-const KEY_PROBLEMS = ['money', 'key', 'perm', 'vpn'];
+const KEY_PROBLEMS = ['money', 'key', 'perm', 'vpn', 'relay'];
 
 // ─── 查餘額（有提供查詢 API 的才查；查不到就不顯示） ───
 
