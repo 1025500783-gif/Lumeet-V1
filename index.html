@@ -277,7 +277,14 @@
 
       <!-- 聲音 -->
       <p class="text-[11px] font-semibold text-[#d6cfc7] tracking-wider uppercase mb-2">聲音</p>
-      <label class="block text-xs text-[#bdb3aa] mb-1" for="cfg-vivix-voice">Vivix 內建聲音（沒填 ElevenLabs 時使用）</label>
+      <label class="block text-xs text-[#bdb3aa] mb-1" for="cfg-tts-provider">語音合成</label>
+      <select id="cfg-tts-provider" class="w-full h-11 rounded-xl bg-black/20 border-white/10 text-sm mb-2">
+        <option value="vivix">Vivix 內建聲音（免填，最簡單）</option>
+        <option value="elevenlabs">ElevenLabs</option>
+        <option value="moss">MOSS（中國大陸可直連）</option>
+      </select>
+      <div id="tts-vivix">
+      <label class="block text-xs text-[#bdb3aa] mb-1" for="cfg-vivix-voice">Vivix 內建聲音</label>
       <select id="cfg-vivix-voice" class="w-full h-11 rounded-xl bg-black/20 border-white/10 text-sm mb-2">
         <option value="longanhuan_v3.6">女・活潑俏皮（安歡）</option>
         <option value="longanfengyue">女・自然親切（安風月）</option>
@@ -291,14 +298,9 @@
       </select>
       <label class="block text-xs text-[#bdb3aa] mb-1" for="cfg-vivix-voice-custom">或 Vivix 複製聲音的 Voice ID（選填，填了就用這個）</label>
       <input id="cfg-vivix-voice-custom" type="text" autocomplete="off" class="w-full h-11 rounded-xl bg-black/20 border-white/10 text-sm mb-3" placeholder="在 Vivix 複製自己的聲音後取得">
-      <p class="text-[11px] text-[#8f857d] mb-2">MOSS（選填）：填了 Key 就改用 MOSS 的聲音（優先於 ElevenLabs）。中國大陸可以直連，音色在 MOSS 官網的音色庫挑或自己建立，複製音色 ID 貼到下面。</p>
-      <label class="block text-xs text-[#bdb3aa] mb-1" for="cfg-moss-key">MOSS API Key</label>
-      <input id="cfg-moss-key" type="password" autocomplete="off" class="w-full h-11 rounded-xl bg-black/20 border-white/10 text-sm mb-2" placeholder="sk-...">
-      <label class="block text-xs text-[#bdb3aa] mb-1" for="cfg-moss-voice">MOSS 音色 ID</label>
-      <input id="cfg-moss-voice" type="text" autocomplete="off" class="w-full h-11 rounded-xl bg-black/20 border-white/10 text-sm mb-2" placeholder="例：94aa4989-c7e9-...">
-      <label class="block text-xs text-[#bdb3aa] mb-1" for="cfg-moss-model">MOSS 模型</label>
-      <input id="cfg-moss-model" type="text" autocomplete="off" class="w-full h-11 rounded-xl bg-black/20 border-white/10 text-sm mb-3" placeholder="moss-tts-1.5-flash">
-      <p class="text-[11px] text-[#8f857d] mb-2">ElevenLabs（選填）：填了 Key 就改用 ElevenLabs 的聲音。中國大陸無法使用。</p>
+      </div>
+      <div id="tts-elevenlabs" class="is-hidden">
+      <p class="text-[11px] text-[#8f857d] mb-2">到 elevenlabs.io 挑聲音或複刻自己的聲音，複製 Voice ID 貼到下面。中國大陸無法使用。</p>
       <label class="block text-xs text-[#bdb3aa] mb-1" for="cfg-el-key">API Key</label>
       <input id="cfg-el-key" type="password" autocomplete="off" class="w-full h-11 rounded-xl bg-black/20 border-white/10 text-sm mb-2" placeholder="sk_...">
       <label class="block text-xs text-[#bdb3aa] mb-1" for="cfg-el-voice">Voice ID</label>
@@ -310,6 +312,19 @@
         <option value="eleven_multilingual_v2">Multilingual v2（自動判斷語言）</option>
         <option value="eleven_v3">v3（最自然，比較慢）</option>
       </select>
+      </div>
+      <div id="tts-moss" class="is-hidden">
+      <p class="text-[11px] text-[#8f857d] mb-2">到 MOSS 官網（大陸版、海外版都可以）的音色庫挑聲音，或自己建立音色，複製音色 ID 貼到下面。中國大陸可以直連。</p>
+      <label class="block text-xs text-[#bdb3aa] mb-1" for="cfg-moss-key">API Key</label>
+      <input id="cfg-moss-key" type="password" autocomplete="off" class="w-full h-11 rounded-xl bg-black/20 border-white/10 text-sm mb-2" placeholder="sk-...">
+      <label class="block text-xs text-[#bdb3aa] mb-1" for="cfg-moss-voice">音色 ID</label>
+      <input id="cfg-moss-voice" type="text" autocomplete="off" class="w-full h-11 rounded-xl bg-black/20 border-white/10 text-sm mb-2" placeholder="例：94aa4989-c7e9-...">
+      <label class="block text-xs text-[#bdb3aa] mb-1" for="cfg-moss-model">語音模型</label>
+      <select id="cfg-moss-model" class="w-full h-11 rounded-xl bg-black/20 border-white/10 text-sm mb-3">
+        <option value="moss-tts-1.5-flash">MOSS-TTS-1.5-Flash（建議，快）</option>
+        <option value="moss-tts-1.0-pro">MOSS-TTS-1.0-Pro</option>
+      </select>
+      </div>
       <label class="block text-xs text-[#bdb3aa] mb-1" for="cfg-el-fix">發音修正（選填）</label>
       <p class="text-[11px] text-[#8f857d] mb-1">念歪的字換成同音字，一行一組，字幕不受影響。例：你=擬</p>
       <textarea id="cfg-el-fix" rows="2" autocomplete="off" class="w-full rounded-xl bg-black/20 border-white/10 text-sm mb-3" placeholder="你=擬"></textarea>

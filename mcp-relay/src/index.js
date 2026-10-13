@@ -306,7 +306,7 @@ async function handleMcp(request, env) {
 const CORS = {
   'Access-Control-Allow-Origin': '*',
   'Access-Control-Allow-Methods': 'GET, POST, OPTIONS',
-  'Access-Control-Allow-Headers': 'Authorization, Content-Type, X-Relay-Secret',
+  'Access-Control-Allow-Headers': 'Authorization, Content-Type, X-Relay-Secret, Platform',
   'Access-Control-Expose-Headers': 'X-Trace-Id',
 };
 
@@ -391,6 +391,7 @@ export default {
           headers: {
             'Authorization': request.headers.get('Authorization') || '',
             'Content-Type': 'application/json',
+            'Platform': 'moss-platform',
           },
           body: request.body,
         });

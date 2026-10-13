@@ -14,11 +14,18 @@ const DEFAULT_TTS_MODEL = 'eleven_turbo_v2_5';
 // 沒填 ElevenLabs 時用 Vivix 內建聲音（Qwen Audio），中國大陸也能用
 const DEFAULT_VIVIX_VOICE = 'longanhuan_v3.6';
 
+// 語音合成：設定頁選哪家就用哪家；舊設定沒有這個欄位時，看填了哪家的 Key
+function ttsProvider(s = cfg) {
+  if (s.ttsProvider) return s.ttsProvider;
+  if (s.mossKey) return 'moss';
+  if (s.elKey) return 'elevenlabs';
+  return 'vivix';
+}
 function useMoss() {
-  return !!cfg.mossKey;
+  return ttsProvider() === 'moss' && !!cfg.mossKey;
 }
 function useElevenLabs() {
-  return !useMoss() && !!cfg.elKey;
+  return ttsProvider() === 'elevenlabs' && !!cfg.elKey;
 }
 const TTS_LANG_LOCKABLE = ['eleven_turbo_v2_5', 'eleven_flash_v2_5'];
 const DEFAULT_TTS_FIX = ''; // 純淨版不預設；念歪的字由使用者自己在設定加
@@ -135,6 +142,10 @@ function loadSettings() {
   } catch { return {}; }
 }
 
+function showTtsProvider(p) {
+  for (const k of ['vivix', 'elevenlabs', 'moss']) el(`tts-${k}`).classList.toggle('is-hidden', k !== p);
+}
+
 function saveSettings(s) {
   try { localStorage.setItem(SETTINGS_KEY, JSON.stringify(s)); } catch {}
 }
@@ -147,7 +158,8 @@ function readFormSettings() {
     elModel:     el('cfg-el-model').value,
     mossKey:     el('cfg-moss-key').value.trim(),
     mossVoice:   el('cfg-moss-voice').value.trim(),
-    mossModel:   el('cfg-moss-model').value.trim(),
+    mossModel:   el('cfg-moss-model').value,
+    ttsProvider: el('cfg-tts-provider').value,
     vivixVoice:  el('cfg-vivix-voice-custom').value.trim() || el('cfg-vivix-voice').value,
     vivixVoicePick: el('cfg-vivix-voice').value,
     vivixVoiceCustom: el('cfg-vivix-voice-custom').value.trim(),
@@ -175,7 +187,9 @@ function fillForm(s) {
   el('cfg-el-model').value   = s.elModel   || DEFAULT_TTS_MODEL;
   el('cfg-moss-key').value   = s.mossKey   || '';
   el('cfg-moss-voice').value = s.mossVoice || '';
-  el('cfg-moss-model').value = s.mossModel || '';
+  el('cfg-moss-model').value = s.mossModel || DEFAULT_MOSS_MODEL;
+  el('cfg-tts-provider').value = ttsProvider(s);
+  showTtsProvider(ttsProvider(s));
   el('cfg-vivix-voice').value = s.vivixVoicePick || DEFAULT_VIVIX_VOICE;
   el('cfg-vivix-voice-custom').value = s.vivixVoiceCustom || '';
   el('cfg-el-fix').value     = s.elFix ?? DEFAULT_TTS_FIX;
@@ -666,6 +680,7 @@ function mossRequest(input) {
     headers: {
       'Authorization': `Bearer ${cfg.mossKey}`,
       'Content-Type': 'application/json',
+      'Platform': 'moss-platform', // 官方範例有帶，照抄
       ...(viaRelay ? { 'X-Relay-Secret': cfg.relaySecret } : {}),
     },
     body: {
@@ -855,8 +870,14 @@ async function startCall() {
 
   const missing = [];
   if (!cfg.vivixKey) missing.push('Vivix API Key');
-  if (cfg.elKey && !cfg.mossKey && !cfg.elVoice) missing.push('ElevenLabs Voice ID');
-  if (cfg.mossKey && !cfg.mossVoice) missing.push('MOSS 音色 ID');
+  if (ttsProvider() === 'elevenlabs') {
+    if (!cfg.elKey) missing.push('ElevenLabs API Key');
+    if (!cfg.elVoice) missing.push('ElevenLabs Voice ID');
+  }
+  if (ttsProvider() === 'moss') {
+    if (!cfg.mossKey) missing.push('MOSS API Key');
+    if (!cfg.mossVoice) missing.push('MOSS 音色 ID');
+  }
   if (cfg.aiMode === 'mcp') {
     if (!relayBase()) missing.push('橋接網址');
     if (!cfg.relaySecret) missing.push('橋接密碼');
@@ -998,12 +1019,12 @@ async function probeConnections() {
   }));
 
   // MOSS 沒有輕量的驗證端點；送空字串，400 代表 Key 有效只是內容不完整（不會扣點）
-  results.push(await probeOne('MOSS', !!cfg.mossKey, async () => {
+  if (ttsProvider() === 'moss') results.push(await probeOne('MOSS', !!cfg.mossKey, async () => {
     const r = await mossRequest('');
     return { ...r, ok: r.ok || r.status === 400 || r.status === 422 };
   }));
 
-  results.push(await probeOne('ElevenLabs', !!cfg.elKey && !cfg.mossKey, () =>
+  if (ttsProvider() === 'elevenlabs') results.push(await probeOne('ElevenLabs', !!cfg.elKey, () =>
     httpJson(cfg.elVoice ? `${ELEVENLABS_BASE}/voices/${encodeURIComponent(cfg.elVoice)}` : `${ELEVENLABS_BASE}/voices`, {
       headers: { 'xi-api-key': cfg.elKey },
     })));
@@ -1105,6 +1126,8 @@ document.addEventListener('DOMContentLoaded', () => {
     el('cfg-stt-model').value = p.model;
     log(`已帶入 ${btn.textContent} 的網址和模型，再填 API Key 後按儲存`);
   }));
+
+  el('cfg-tts-provider').addEventListener('change', e => showTtsProvider(e.target.value));
 
   el('btn-copy-mcp').addEventListener('click', async () => {
     const base = el('cfg-relay-url').value.trim().replace(/\/+$/, '') || relayBase();
