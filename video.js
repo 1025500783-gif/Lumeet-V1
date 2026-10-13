@@ -71,24 +71,60 @@ function errText(data) {
   return (s || '').slice(0, 300);
 }
 
-// 常見錯誤翻成看得懂的中文，看不出原因就回傳空字串
-function friendlyHint(service, status, data) {
+// 常見錯誤翻成看得懂的中文：沒錢就說沒錢，Key 錯就說 Key 錯；看不出原因就回傳空字串
+const VIVIX_CODE = {
+  10001: 'key', 10003: 'key', 10004: 'money', 10005: 'money', 10008: 'busy', 10009: 'perm',
+  20016: 'image', 30006: 'concurrency', 30008: 'server',
+};
+
+function errCode(data) {
+  const c = data?.code ?? data?.error?.code;
+  return Number.isFinite(Number(c)) ? Number(c) : null;
+}
+
+function errKind(status, data) {
   const s = errText(data).toLowerCase();
-  if (status === 402 || /insufficient|balance|quota|credit|余额|餘額/.test(s)) {
-    return `${service} 餘額或額度不足，請到 ${service} 後台儲值或確認額度`;
-  }
-  if (/unusual activity|detected_unusual/.test(s)) {
-    return `${service} 擋下了這次連線（免費方案透過 VPN／代理使用會被拒絕）：付費方案，或改用 Vivix 內建聲音`;
-  }
-  if (/missing_permissions|permission/.test(s)) {
-    return `${service} 這把 Key 權限不夠：到後台把 Text to Speech 和 Voices 權限打開（${errText(data).slice(0, 120)}）`;
-  }
-  if (status === 401 || status === 403) {
-    const raw = errText(data).slice(0, 120);
-    return `${service} Key 錯誤或沒有權限，請重新複製貼上${raw ? `（${raw}）` : ''}`;
-  }
-  if (status === 429) return `${service} 請求太頻繁或額度用完，稍等一下再試`;
+  const vivix = VIVIX_CODE[errCode(data)];
+  if (vivix) return vivix;
+  if (status === 402 || /insufficient.?(balance|fund|credit|quota)|not enough (credit|balance)|balance|quota_exceeded|exceeded your (current )?quota|余额|餘額|欠费|欠費|arrear|payment required|credits?/.test(s)) return 'money';
+  if (/unusual activity|detected_unusual/.test(s)) return 'vpn';
+  if (/missing_permission/.test(s)) return 'perm';
+  if (status === 401 || /invalid.{0,10}(api.?key|token)|incorrect api key|auth(entication)? failed|unauthorized|invalid_api_key/.test(s)) return 'key';
+  if (status === 403) return 'perm';
+  if (status === 429) return 'busy';
+  if (status >= 500) return 'server';
   return '';
+}
+
+function friendlyHint(service, status, data) {
+  const raw = errText(data).slice(0, 120);
+  const tail = raw ? `（原始訊息：${raw}）` : '';
+  switch (errKind(status, data)) {
+    case 'money': return `💸 ${service} 沒錢了：餘額或額度用完，到 ${service} 後台儲值`;
+    case 'vpn': return `🌐 ${service} 擋下了這次連線：免費方案透過 VPN／代理使用會被拒絕，要付費方案或換別家`;
+    case 'perm': return `🚫 ${service} 這把 Key 權限不夠：到後台把${service === 'ElevenLabs' ? '「文字轉語音」和「音色」' : '需要的'}權限打開${tail}`;
+    case 'key': return `🔑 ${service} 的 Key 不對：重新複製貼上，前後不要有空格${tail}`;
+    case 'busy': return `⏳ ${service} 請求太頻繁：等一下再試`;
+    case 'image': return `🖼 ${service} 讀不到角色圖片：確認圖片網址用瀏覽器打得開`;
+    case 'concurrency': return `👥 ${service} 同時開了太多通話：先把其他通話掛掉`;
+    case 'server': return `🔧 ${service} 那邊的伺服器出問題，不是你的錯：稍後再試${tail}`;
+    default: return '';
+  }
+}
+
+// 網路層錯誤（根本沒收到回應）
+function netHint(service, e) {
+  const m = String(e?.message || e || '');
+  if (/timeout|timed out/i.test(m)) return `🌐 連 ${service} 逾時：網路太慢或被擋，檢查網路或翻牆`;
+  return `🌐 連不上 ${service}：網路或翻牆的問題（${m.slice(0, 80)}）`;
+}
+
+// 給呼叫失敗用：有對應的白話就用白話，否則附上狀態碼和原始訊息
+function apiError(service, status, data) {
+  const hint = friendlyHint(service, status, data);
+  const err = new Error(hint || `${service} 出錯 (${status})：${errText(data).slice(0, 200)}`);
+  err.hint = hint;
+  return err;
 }
 
 async function httpJson(url, { method = 'GET', headers = {}, body, timeoutMs = 60000 } = {}) {
@@ -307,11 +343,8 @@ async function createVivixSession() {
   });
 
   if (!res.ok) {
-    const hint = friendlyHint('Vivix', res.status, res.data);
     if (res.traceId) log(`Vivix X-Trace-Id：${res.traceId}`);
-    const err = new Error(`Vivix session 建立失敗 (${res.status}): ${errText(res.data)}`);
-    err.hint = hint;
-    throw err;
+    throw apiError('Vivix', res.status, res.data);
   }
 
   return res.data.data || res.data;
@@ -343,6 +376,12 @@ function connectVivixWs(controlUrl, clientSecret) {
   vivixWs.onmessage = (evt) => {
     try {
       const msg = JSON.parse(evt.data);
+      if (msg.type === 'error' || msg.type === 'session.closed') {
+        const detail = msg.error || msg;
+        const hint = friendlyHint('Vivix', 0, detail);
+        if (msg.type === 'error' || hint) log(`⚠ ${hint || `Vivix：${detail.message || detail.reason || msg.type}`}`);
+        if (hint) setStatus(hint);
+      }
       if (msg.type === 'response.done') {
         setAiSpeaking(false);
         setStatus(vad ? '聆聽中' : '等待中');
@@ -475,7 +514,7 @@ async function transcribe(blob) {
     headers: { 'Authorization': `Bearer ${cfg.sttKey}` },
     body: fd,
   });
-  if (!res.ok) throw new Error(`語音辨識失敗 (${res.status}): ${(await res.text()).slice(0, 200)}`);
+  if (!res.ok) throw apiError('語音辨識', res.status, parseMaybeJson(await res.text()));
   const text = ((await res.json()).text || '').trim();
   return STT_JUNK.test(text) || STT_JUNK_EXACT.test(text) ? '' : text;
 }
@@ -629,7 +668,7 @@ async function chatWithLLM(userMessage) {
   });
 
   if (!res.ok) {
-    throw new Error(`LLM 回應失敗 (${res.status}): ${errText(res.data)}`);
+    throw apiError('模型 API', res.status, res.data);
   }
 
   const reply = (res.data.choices?.[0]?.message?.content || '').trim();
@@ -661,7 +700,7 @@ async function textToSpeech(text) {
   });
 
   if (!res.ok) {
-    throw new Error(`ElevenLabs TTS 失敗 (${res.status}): ${errText(res.data)}`);
+    throw apiError('ElevenLabs', res.status, res.data);
   }
   return res.data;
 }
@@ -713,7 +752,7 @@ async function mossSpeech(text) {
   const res = await mossRequest(applyTtsFix(text));
   if (!res.ok) {
     if (res.traceId) log(`MOSS trace_id：${res.traceId}`);
-    throw new Error(`MOSS 語音合成失敗 (${res.status}): ${errText(res.data)}`);
+    throw apiError('MOSS', res.status, res.data);
   }
   const { url, b64 } = findMossAudio(res.data);
   if (b64) return b64;
@@ -748,7 +787,7 @@ function speak(text, action) {
       sendToVivix(vocal, action || '自然地說話，帶有微笑');
     } catch (e) {
       log(`說話失敗: ${e.message}`);
-      setStatus('錯誤');
+      setStatus(e.hint || '錯誤');
       setSubtitle(`發生錯誤: ${e.message}`);
     }
   });
@@ -855,7 +894,7 @@ async function handleUserInput(text) {
     await speak(reply);
   } catch (e) {
     log(`管線錯誤: ${e.message}`);
-    setStatus('錯誤');
+    setStatus(e.hint || '錯誤');
     setSubtitle(`發生錯誤: ${e.message}`);
   } finally {
     isProcessing = false;
@@ -977,7 +1016,7 @@ async function endCall() {
 
 // ─── 測試連線 ────────────────────────────────────────────
 
-async function probeOne(name, enabled, fn) {
+async function probeOne(name, enabled, fn, balanceFn) {
   if (!enabled) {
     log(`⏭ ${name}：沒填，跳過`);
     return `${name}: 未填`;
@@ -985,14 +1024,16 @@ async function probeOne(name, enabled, fn) {
   try {
     const res = await fn();
     if (res.ok) {
-      log(`✓ ${name}：連線正常`);
-      return `${name}: OK`;
+      let bal = '';
+      if (balanceFn) { try { bal = await balanceFn(); } catch {} }
+      log(`✓ ${name}：連線正常${bal ? `，${bal}` : ''}`);
+      return `${name}: OK${bal ? `（${bal}）` : ''}`;
     }
-    const hint = res.data?.notRelay || friendlyHint(name, res.status, res.data) || `HTTP ${res.status}`;
+    const hint = res.data?.notRelay || friendlyHint(name, res.status, res.data) || `出錯 (HTTP ${res.status})：${errText(res.data).slice(0, 120)}`;
     log(`❌ ${name}：${hint}`);
     return `${name}: ${hint}`;
   } catch (e) {
-    log(`❌ ${name}：連不上（${e.message}）`);
+    log(`❌ ${name}：${netHint(name, e)}`);
     return `${name}: 連不上`;
   }
 }
@@ -1000,6 +1041,47 @@ async function probeOne(name, enabled, fn) {
 function modelsUrl(base) {
   const b = base.replace(/\/+$/, '').replace(/\/(chat\/completions|audio\/transcriptions)$/, '');
   return b.endsWith('/models') ? b : `${b}/models`;
+}
+
+// Key 本身有問題：就算回 400 也不能算測試通過
+const KEY_PROBLEMS = ['money', 'key', 'perm', 'vpn'];
+
+// ─── 查餘額（有提供查詢 API 的才查；查不到就不顯示） ───
+
+const money = (n, unit) => `剩 ${unit}${Number(n).toFixed(2)}`;
+
+async function elevenLabsBalance() {
+  const r = await httpJson(`${ELEVENLABS_BASE}/user/subscription`, { headers: { 'xi-api-key': cfg.elKey } });
+  const d = r.data || {};
+  if (!r.ok || d.character_limit == null) return '';
+  return `本月剩 ${Math.max(0, d.character_limit - (d.character_count || 0)).toLocaleString()} 字`;
+}
+
+async function balanceFor(base, key) {
+  let host = '';
+  try { host = new URL(base).host; } catch { return ''; }
+  const auth = { headers: { 'Authorization': `Bearer ${key}` } };
+  if (/deepseek\.com$/.test(host)) {
+    const r = await httpJson('https://api.deepseek.com/user/balance', auth);
+    const b = r.data?.balance_infos?.[0];
+    return r.ok && b ? money(b.total_balance, b.currency === 'USD' ? '$' : '¥') : '';
+  }
+  if (/siliconflow\.(cn|com)$/.test(host)) {
+    const r = await httpJson(`https://${host}/v1/user/info`, auth);
+    const d = r.data?.data;
+    return r.ok && d?.totalBalance != null ? money(d.totalBalance, '¥') : '';
+  }
+  if (/moonshot\.(cn|ai)$/.test(host)) {
+    const r = await httpJson(`https://${host}/v1/users/me/balance`, auth);
+    const d = r.data?.data;
+    return r.ok && d?.available_balance != null ? money(d.available_balance, host.endsWith('.cn') ? '¥' : '$') : '';
+  }
+  if (/openrouter\.ai$/.test(host)) {
+    const r = await httpJson('https://openrouter.ai/api/v1/credits', auth);
+    const d = r.data?.data;
+    return r.ok && d ? money((d.total_credits || 0) - (d.total_usage || 0), '$') : '';
+  }
+  return '';
 }
 
 async function probeConnections() {
@@ -1014,20 +1096,21 @@ async function probeConnections() {
       headers: vivixHeaders(),
       body: { model: 'vivix-a1-stream', dry_run: true },
     });
-    if (r.traceId && !(r.ok || r.status === 400 || r.status === 422)) log(`Vivix X-Trace-Id：${r.traceId}`);
-    return { ok: r.ok || r.status === 400 || r.status === 422, status: r.status, data: r.data };
+    const ok = (r.ok || r.status === 400 || r.status === 422) && !KEY_PROBLEMS.includes(errKind(r.status, r.data));
+    if (r.traceId && !ok) log(`Vivix X-Trace-Id：${r.traceId}`);
+    return { ok, status: r.status, data: r.data };
   }));
 
   // MOSS 沒有輕量的驗證端點；送空字串，400 代表 Key 有效只是內容不完整（不會扣點）
   if (ttsProvider() === 'moss') results.push(await probeOne('MOSS', !!cfg.mossKey, async () => {
     const r = await mossRequest('');
-    return { ...r, ok: r.ok || r.status === 400 || r.status === 422 };
+    return { ...r, ok: (r.ok || r.status === 400 || r.status === 422) && !KEY_PROBLEMS.includes(errKind(r.status, r.data)) };
   }));
 
   if (ttsProvider() === 'elevenlabs') results.push(await probeOne('ElevenLabs', !!cfg.elKey, () =>
     httpJson(cfg.elVoice ? `${ELEVENLABS_BASE}/voices/${encodeURIComponent(cfg.elVoice)}` : `${ELEVENLABS_BASE}/voices`, {
       headers: { 'xi-api-key': cfg.elKey },
-    })));
+    }), elevenLabsBalance));
 
   if (cfg.aiMode === 'mcp') {
     // 只看 2xx 不夠：填錯成別的 Worker（例如記憶庫）也會回 200，要確認回應長得像橋接器
@@ -1042,11 +1125,13 @@ async function probeConnections() {
     }));
   } else {
     results.push(await probeOne('模型 API', !!(cfg.llmBase && cfg.llmKey), () =>
-      httpJson(modelsUrl(cfg.llmBase), { headers: { 'Authorization': `Bearer ${cfg.llmKey}` } })));
+      httpJson(modelsUrl(cfg.llmBase), { headers: { 'Authorization': `Bearer ${cfg.llmKey}` } }),
+      () => balanceFor(cfg.llmBase, cfg.llmKey)));
   }
 
   results.push(await probeOne('語音辨識', hasStt(), () =>
-    httpJson(modelsUrl(cfg.sttBase), { headers: { 'Authorization': `Bearer ${cfg.sttKey}` } })));
+    httpJson(modelsUrl(cfg.sttBase), { headers: { 'Authorization': `Bearer ${cfg.sttKey}` } }),
+    () => balanceFor(cfg.sttBase, cfg.sttKey)));
 
   el('metrics').textContent = results.join(' ｜ ');
   log('── 連線測試完畢 ──');
