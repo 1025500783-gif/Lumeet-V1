@@ -35,6 +35,7 @@ TRTC → 即時視訊串流到你的螢幕
 | Vivix API Key | 必填 | [vivix.ai](https://vivix.ai) |
 | ElevenLabs API Key + Voice ID | 選填 | [elevenlabs.io](https://elevenlabs.io)。不填就用 Vivix 內建聲音（中國大陸也能用） |
 | MOSS API Key + 音色 ID | 選填 | MOSS 官網（大陸版／海外版都可以）的語音合成，中國大陸可直連、音色可自己調。設定頁「語音合成」選 MOSS |
+| MiniMax API Key + 音色 ID | 選填 | [MiniMax 開放平台](https://platform.minimaxi.com)（大陸版）或 [國際版](https://platform.minimax.io) 的語音合成，中國大陸可直連，可複刻自己的聲音。設定頁「語音合成」選 MiniMax，並選對帳號版本（兩邊的 Key 不通用） |
 | 角色圖片 | 必填 | 公開 HTTPS 圖片網址（Vivix 伺服器要讀得到） |
 | 模型 API | 只有「直接 API」要填 | 任何 OpenAI 相容端點：OpenAI、DeepSeek、Groq、OpenRouter⋯⋯ |
 | MCP 橋接網址 + 密碼 | 只有「MCP 橋接」要填 | 自己部署，見下方 |

@@ -282,6 +282,7 @@
         <option value="vivix">Vivix 內建聲音（免填，最簡單）</option>
         <option value="elevenlabs">ElevenLabs</option>
         <option value="moss">MOSS（中國大陸可直連）</option>
+        <option value="minimax">MiniMax（中國大陸可直連）</option>
       </select>
       <div id="tts-vivix">
       <label class="block text-xs text-[#bdb3aa] mb-1" for="cfg-vivix-voice">Vivix 內建聲音</label>
@@ -323,6 +324,25 @@
       <select id="cfg-moss-model" class="w-full h-11 rounded-xl bg-black/20 border-white/10 text-sm mb-3">
         <option value="moss-tts-1.5-flash">MOSS-TTS-1.5-Flash（建議，快）</option>
         <option value="moss-tts-1.0-pro">MOSS-TTS-1.0-Pro</option>
+      </select>
+      </div>
+      <div id="tts-minimax" class="is-hidden">
+      <p class="text-[11px] text-[#8f857d] mb-2">到 MiniMax 開放平台建立 API Key，在音色庫挑聲音或複刻自己的聲音，複製音色 ID（voice_id）貼到下面。大陸版和國際版是兩個不同的帳號，Key 不通用，下面要選對。</p>
+      <label class="block text-xs text-[#bdb3aa] mb-1" for="cfg-minimax-region">帳號版本</label>
+      <select id="cfg-minimax-region" class="w-full h-11 rounded-xl bg-black/20 border-white/10 text-sm mb-2">
+        <option value="cn">中國大陸版（minimaxi.com）</option>
+        <option value="intl">國際版（minimax.io）</option>
+      </select>
+      <label class="block text-xs text-[#bdb3aa] mb-1" for="cfg-minimax-key">API Key</label>
+      <input id="cfg-minimax-key" type="password" autocomplete="off" class="w-full h-11 rounded-xl bg-black/20 border-white/10 text-sm mb-2" placeholder="eyJ... 或 sk-...">
+      <label class="block text-xs text-[#bdb3aa] mb-1" for="cfg-minimax-voice">音色 ID</label>
+      <input id="cfg-minimax-voice" type="text" autocomplete="off" class="w-full h-11 rounded-xl bg-black/20 border-white/10 text-sm mb-2" placeholder="例：male-qn-qingse">
+      <label class="block text-xs text-[#bdb3aa] mb-1" for="cfg-minimax-model">語音模型</label>
+      <select id="cfg-minimax-model" class="w-full h-11 rounded-xl bg-black/20 border-white/10 text-sm mb-3">
+        <option value="speech-2.8-turbo">speech-2.8-turbo（建議，快）</option>
+        <option value="speech-2.8-hd">speech-2.8-hd（最自然，比較慢）</option>
+        <option value="speech-2.6-turbo">speech-2.6-turbo</option>
+        <option value="speech-02-turbo">speech-02-turbo</option>
       </select>
       </div>
       <label class="block text-xs text-[#bdb3aa] mb-1" for="cfg-el-fix">發音修正（選填）</label>

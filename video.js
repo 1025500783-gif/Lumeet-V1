@@ -1,11 +1,14 @@
 // video.js — AI 視訊通話前端管線
-// 流程：使用者語音/文字 → STT → LLM 或 MCP 橋接 → ElevenLabs／MOSS TTS → Vivix 對嘴 → TRTC 視訊
+// 流程：使用者語音/文字 → STT → LLM 或 MCP 橋接 → ElevenLabs／MOSS／MiniMax TTS → Vivix 對嘴 → TRTC 視訊
 
 const VIVIX_BASE = 'https://api.vivix.ai/v1';
 const ELEVENLABS_BASE = 'https://api.elevenlabs.io/v1';
 // MOSS（OpenMOSS 的語音合成）：中國大陸可直連，海外版帳號也用同一個網址
 const MOSS_BASE = 'https://api.mosi.cn/v1';
 const DEFAULT_MOSS_MODEL = 'moss-tts-1.5-flash';
+// MiniMax 語音合成：中國大陸版和國際版是兩個帳號體系，Key 不通用，網址也不同
+const MINIMAX_BASE = { cn: 'https://api.minimaxi.com/v1', intl: 'https://api.minimax.io/v1' };
+const DEFAULT_MINIMAX_MODEL = 'speech-2.8-turbo';
 const DEFAULT_STT_MODEL = 'whisper-large-v3-turbo';
 // 只填 Key 沒填網址時用 Groq（輸入框的灰字範例很容易被當成已經填了）
 const DEFAULT_STT_BASE = 'https://api.groq.com/openai/v1';
@@ -18,11 +21,18 @@ const DEFAULT_VIVIX_VOICE = 'longanhuan_v3.6';
 function ttsProvider(s = cfg) {
   if (s.ttsProvider) return s.ttsProvider;
   if (s.mossKey) return 'moss';
+  if (s.minimaxKey) return 'minimax';
   if (s.elKey) return 'elevenlabs';
   return 'vivix';
 }
 function useMoss() {
   return ttsProvider() === 'moss' && !!cfg.mossKey;
+}
+function useMinimax() {
+  return ttsProvider() === 'minimax' && !!cfg.minimaxKey;
+}
+function minimaxRegion(s = cfg) {
+  return s.minimaxRegion === 'intl' ? 'intl' : 'cn';
 }
 function useElevenLabs() {
   return ttsProvider() === 'elevenlabs' && !!cfg.elKey;
@@ -84,7 +94,7 @@ function errCode(data) {
 
 function errKind(status, data) {
   const s = errText(data).toLowerCase();
-  // 橋接（mcp-relay）自己擋下來的：密碼不對，不是 Vivix／MOSS 的 Key 問題
+  // 橋接（mcp-relay）自己擋下來的：密碼不對，不是 Vivix／MOSS／MiniMax 的 Key 問題
   if (status === 401 && data?.error === 'Unauthorized') return 'relay';
   const vivix = VIVIX_CODE[errCode(data)];
   if (vivix) return vivix;
@@ -182,7 +192,7 @@ function loadSettings() {
 }
 
 function showTtsProvider(p) {
-  for (const k of ['vivix', 'elevenlabs', 'moss']) el(`tts-${k}`).classList.toggle('is-hidden', k !== p);
+  for (const k of ['vivix', 'elevenlabs', 'moss', 'minimax']) el(`tts-${k}`).classList.toggle('is-hidden', k !== p);
 }
 
 function saveSettings(s) {
@@ -198,6 +208,10 @@ function readFormSettings() {
     mossKey:     el('cfg-moss-key').value.trim(),
     mossVoice:   el('cfg-moss-voice').value.trim(),
     mossModel:   el('cfg-moss-model').value,
+    minimaxKey:    el('cfg-minimax-key').value.trim(),
+    minimaxVoice:  el('cfg-minimax-voice').value.trim(),
+    minimaxModel:  el('cfg-minimax-model').value,
+    minimaxRegion: el('cfg-minimax-region').value,
     ttsProvider: el('cfg-tts-provider').value,
     vivixVoice:  el('cfg-vivix-voice-custom').value.trim() || el('cfg-vivix-voice').value,
     vivixVoicePick: el('cfg-vivix-voice').value,
@@ -227,6 +241,10 @@ function fillForm(s) {
   el('cfg-moss-key').value   = s.mossKey   || '';
   el('cfg-moss-voice').value = s.mossVoice || '';
   el('cfg-moss-model').value = s.mossModel || DEFAULT_MOSS_MODEL;
+  el('cfg-minimax-key').value    = s.minimaxKey   || '';
+  el('cfg-minimax-voice').value  = s.minimaxVoice || '';
+  el('cfg-minimax-model').value  = s.minimaxModel || DEFAULT_MINIMAX_MODEL;
+  el('cfg-minimax-region').value = minimaxRegion(s);
   el('cfg-tts-provider').value = ttsProvider(s);
   showTtsProvider(ttsProvider(s));
   el('cfg-vivix-voice').value = s.vivixVoicePick || DEFAULT_VIVIX_VOICE;
@@ -767,6 +785,58 @@ async function mossSpeech(text) {
   return audio.data;
 }
 
+// ─── MiniMax TTS ────────────────────────────────────────
+
+// MiniMax 允許網頁直接呼叫（有 CORS），網頁版和 App 都直連，不用經過橋接器
+function minimaxRequest(text) {
+  return httpJson(`${MINIMAX_BASE[minimaxRegion()]}/t2a_v2`, {
+    method: 'POST',
+    headers: {
+      'Authorization': `Bearer ${cfg.minimaxKey}`,
+      'Content-Type': 'application/json',
+    },
+    body: {
+      model: cfg.minimaxModel || DEFAULT_MINIMAX_MODEL,
+      text,
+      stream: false,
+      language_boost: 'auto',
+      output_format: 'hex',
+      voice_setting: { voice_id: cfg.minimaxVoice, speed: 1, vol: 1, pitch: 0 },
+      audio_setting: { sample_rate: 32000, bitrate: 128000, format: 'mp3', channel: 1 },
+    },
+  });
+}
+
+// MiniMax 出錯時 HTTP 常常還是 200，真正的錯誤碼在 base_resp.status_code
+const MINIMAX_CODE = { 1002: 429, 1004: 401, 1008: 402, 2049: 401 };
+
+function minimaxError(res) {
+  const code = Number(res.data?.base_resp?.status_code);
+  if (!res.ok || (code && code !== 0)) {
+    const status = MINIMAX_CODE[code] || (res.ok ? 400 : res.status);
+    return { status, data: res.data };
+  }
+  return null;
+}
+
+function hexToBase64(hex) {
+  let bin = '';
+  for (let i = 0; i + 1 < hex.length; i += 2) bin += String.fromCharCode(parseInt(hex.slice(i, i + 2), 16));
+  return btoa(bin);
+}
+
+async function minimaxSpeech(text) {
+  const res = await minimaxRequest(applyTtsFix(text));
+  const err = minimaxError(res);
+  if (err) {
+    if (res.data?.trace_id) log(`MiniMax trace_id：${res.data.trace_id}`);
+    throw apiError('MiniMax', err.status, err.data);
+  }
+  const hex = res.data?.data?.audio;
+  if (!hex || typeof hex !== 'string') throw new Error(`MiniMax 回應裡找不到音檔：${errText(res.data)}`);
+  return hexToBase64(hex);
+}
+
 // ─── 讓角色說話（依序排隊，不互相蓋掉） ─────────────────
 
 function speak(text, action) {
@@ -779,6 +849,9 @@ function speak(text, action) {
       if (useMoss()) {
         setStatus('語音合成中⋯');
         vocal = { type: 'audio', audio: await mossSpeech(text), mime_type: 'audio/mpeg' };
+      } else if (useMinimax()) {
+        setStatus('語音合成中⋯');
+        vocal = { type: 'audio', audio: await minimaxSpeech(text), mime_type: 'audio/mpeg' };
       } else if (useElevenLabs()) {
         setStatus('語音合成中⋯');
         vocal = { type: 'audio', audio: await textToSpeech(text), mime_type: 'audio/mpeg' };
@@ -919,6 +992,10 @@ async function startCall() {
   if (ttsProvider() === 'moss') {
     if (!cfg.mossKey) missing.push('MOSS API Key');
     if (!cfg.mossVoice) missing.push('MOSS 音色 ID');
+  }
+  if (ttsProvider() === 'minimax') {
+    if (!cfg.minimaxKey) missing.push('MiniMax API Key');
+    if (!cfg.minimaxVoice) missing.push('MiniMax 音色 ID');
   }
   if (cfg.aiMode === 'mcp') {
     if (!relayBase()) missing.push('橋接網址');
@@ -1108,6 +1185,14 @@ async function probeConnections() {
   if (ttsProvider() === 'moss') results.push(await probeOne('MOSS', !!cfg.mossKey, async () => {
     const r = await mossRequest('');
     return { ...r, ok: (r.ok || r.status === 400 || r.status === 422) && !KEY_PROBLEMS.includes(errKind(r.status, r.data)) };
+  }));
+
+  // MiniMax 沒有輕量的驗證端點；送空字串，只看是不是 Key 或餘額的問題（不會念出聲音）
+  if (ttsProvider() === 'minimax') results.push(await probeOne('MiniMax', !!cfg.minimaxKey, async () => {
+    const r = await minimaxRequest('');
+    const err = minimaxError(r);
+    if (!err) return { ...r, ok: true };
+    return { ok: !KEY_PROBLEMS.includes(errKind(err.status, err.data)) && err.status < 500, status: err.status, data: err.data };
   }));
 
   if (ttsProvider() === 'elevenlabs') results.push(await probeOne('ElevenLabs', !!cfg.elKey, () =>
