@@ -91,7 +91,7 @@
 <body class="w-full min-h-screen bg-[#0d0d0d] flex items-center justify-center p-0 md:py-6 text-[#ede8e3]">
 
   <!-- 手機填滿螢幕；桌機（md 以上）固定 390px x 844px -->
-  <main class="w-full h-[100dvh] md:w-[390px] md:h-[844px] relative overflow-hidden bg-[#181615] rounded-none md:rounded-[44px] shadow-[0_25px_80px_rgba(0,0,0,0.9)] ring-1 ring-white/10 flex flex-col justify-between select-none">
+  <main class="w-full h-dvh-safe md:w-[390px] md:h-[844px] relative overflow-hidden bg-[#181615] rounded-none md:rounded-[44px] shadow-[0_25px_80px_rgba(0,0,0,0.9)] ring-1 ring-white/10 flex flex-col justify-between select-none">
 
     <!-- 一、視訊區（全螢幕底層） -->
     <div id="video-stage" class="absolute inset-0 w-full h-full bg-[#1b1918] z-0 flex flex-col items-center justify-center">
@@ -265,7 +265,7 @@
   </main>
 
   <div id="settings-sheet" class="is-hidden fixed inset-0 z-50 bg-black/55 backdrop-blur-sm flex items-end md:items-center justify-center p-3" role="dialog" aria-modal="true" aria-labelledby="settings-title">
-    <section class="w-full max-w-[366px] max-h-[calc(100dvh-24px)] overflow-y-auto overscroll-contain rounded-[28px] bg-[#211d1b]/95 border border-white/10 p-5 shadow-2xl">
+    <section class="w-full max-w-[366px] max-h-sheet overflow-y-auto overscroll-contain rounded-[28px] bg-[#211d1b]/95 border border-white/10 p-5 shadow-2xl">
       <div class="flex items-center justify-between mb-4">
         <h2 id="settings-title" class="serif-title text-lg font-semibold">視訊設定</h2>
         <button id="btn-close-settings" type="button" class="w-11 h-11 rounded-full bg-white/10 text-xl" aria-label="關閉設定">×</button>
