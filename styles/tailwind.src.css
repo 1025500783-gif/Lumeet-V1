@@ -1,3 +1,9 @@
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
+
+/* 舊版 Android WebView（Chrome 108 以前，例如部分榮耀手機）不認得 dvh，整個畫面會塌成一條；先給 vh 當退路 */
+@layer utilities {
+  .h-dvh-safe { height: 100vh; height: 100dvh; }
+  .max-h-sheet { max-height: calc(100vh - 24px); max-height: calc(100dvh - 24px); }
+}
