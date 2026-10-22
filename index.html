@@ -86,6 +86,12 @@
       0% { height: 3px; }
       100% { height: 13px; }
     }
+    .cfg-fold { border: 1px solid rgba(255,255,255,0.1); border-radius: 16px; background: rgba(0,0,0,0.15); padding: 0 12px; margin-bottom: 10px; }
+    .cfg-fold[open] { padding-bottom: 4px; }
+    .cfg-fold > summary { list-style: none; display: flex; align-items: center; justify-content: space-between; min-height: 44px; font-size: 13px; font-weight: 600; color: #d6cfc7; cursor: pointer; -webkit-tap-highlight-color: transparent; }
+    .cfg-fold > summary::-webkit-details-marker { display: none; }
+    .cfg-fold > summary::after { content: ''; width: 8px; height: 8px; border-right: 1.5px solid #8f857d; border-bottom: 1.5px solid #8f857d; transform: rotate(45deg); transition: transform .2s; margin-right: 4px; }
+    .cfg-fold[open] > summary::after { transform: rotate(-135deg); }
   </style>
 </head>
 <body class="w-full min-h-screen bg-[#0d0d0d] flex items-center justify-center p-0 md:py-6 text-[#ede8e3]">
@@ -271,12 +277,16 @@
         <button id="btn-close-settings" type="button" class="w-11 h-11 rounded-full bg-white/10 text-xl" aria-label="關閉設定">×</button>
       </div>
       <!-- Vivix -->
-      <p class="text-[11px] font-semibold text-[#d6cfc7] tracking-wider uppercase mb-2 mt-1">Vivix</p>
+      <details class="cfg-fold">
+      <summary>Vivix</summary>
       <label class="block text-xs text-[#bdb3aa] mb-1" for="cfg-vivix-key">API Key</label>
       <input id="cfg-vivix-key" type="password" autocomplete="off" class="w-full h-11 rounded-xl bg-black/20 border-white/10 text-sm mb-3" placeholder="vx-...">
 
+      </details>
+
       <!-- 聲音 -->
-      <p class="text-[11px] font-semibold text-[#d6cfc7] tracking-wider uppercase mb-2">聲音</p>
+      <details class="cfg-fold">
+      <summary>聲音</summary>
       <label class="block text-xs text-[#bdb3aa] mb-1" for="cfg-tts-provider">語音合成</label>
       <select id="cfg-tts-provider" class="w-full h-11 rounded-xl bg-black/20 border-white/10 text-sm mb-2">
         <option value="vivix">Vivix 內建聲音（免填，最簡單）</option>
@@ -349,8 +359,11 @@
       <p class="text-[11px] text-[#8f857d] mb-1">念歪的字換成同音字，一行一組，字幕不受影響。例：你=擬</p>
       <textarea id="cfg-el-fix" rows="2" autocomplete="off" class="w-full rounded-xl bg-black/20 border-white/10 text-sm mb-3" placeholder="你=擬"></textarea>
 
+      </details>
+
       <!-- AI 接入方式 -->
-      <p class="text-[11px] font-semibold text-[#d6cfc7] tracking-wider uppercase mb-2">AI 接入方式</p>
+      <details class="cfg-fold">
+      <summary>AI 接入方式</summary>
       <div class="grid grid-cols-2 gap-2 mb-2" role="radiogroup" aria-label="AI 接入方式">
         <label class="cursor-pointer">
           <input type="radio" name="ai-mode" value="api" class="peer sr-only" checked>
@@ -382,8 +395,11 @@
         <p class="text-[11px] text-[#8f857d] mb-3">填好上面兩格再按，貼到你的 AI 那邊（Claude Code、Codex、Operit⋯⋯的 MCP 設定）。網址含密碼，不要給別人看。</p>
       </div>
 
+      </details>
+
       <!-- 語音辨識 -->
-      <p class="text-[11px] font-semibold text-[#d6cfc7] tracking-wider uppercase mb-2">語音辨識（選填）</p>
+      <details class="cfg-fold">
+      <summary>語音辨識（選填）</summary>
       <p class="text-[11px] text-[#8f857d] mb-2">不填就只能打字。Groq、OpenAI 的 Whisper 都可以；中國大陸請用硅基流動（不用翻牆，SenseVoice 模型免費）。</p>
       <div class="flex gap-2 mb-2">
         <button type="button" data-stt-preset="groq" class="flex-1 h-9 rounded-full bg-white/10 active:bg-white/20 border border-white/10 text-xs text-[#eee7e0]">Groq</button>
@@ -396,8 +412,11 @@
       <label class="block text-xs text-[#bdb3aa] mb-1" for="cfg-stt-model">Model</label>
       <input id="cfg-stt-model" type="text" autocomplete="off" class="w-full h-11 rounded-xl bg-black/20 border-white/10 text-sm mb-3" placeholder="whisper-large-v3-turbo">
 
+      </details>
+
       <!-- 角色 -->
-      <p class="text-[11px] font-semibold text-[#d6cfc7] tracking-wider uppercase mb-2">角色</p>
+      <details class="cfg-fold">
+      <summary>角色</summary>
       <label class="block text-xs text-[#bdb3aa] mb-1" for="cfg-char-name">角色名稱</label>
       <input id="cfg-char-name" type="text" autocomplete="off" class="w-full h-11 rounded-xl bg-black/20 border-white/10 text-sm mb-2" placeholder="角色名稱">
       <label class="block text-xs text-[#bdb3aa] mb-1" for="cfg-char-prompt">他的自我設定（選填，直接 API 模式用）</label>
@@ -408,6 +427,8 @@
       <input id="file" type="file" accept="image/jpeg,image/png,image/webp" class="block w-full text-xs text-[#bdb3aa] mb-2 file:mr-3 file:rounded-full file:border-0 file:px-3 file:py-2 file:bg-white/10 file:text-[#eee7e0]">
       <label class="block text-xs text-[#bdb3aa] mb-1" for="description">圖片說明（選填）</label>
       <input id="description" type="text" autocomplete="off" class="w-full h-11 rounded-xl bg-black/20 border-white/10 text-sm mb-3" placeholder="英文描述可讓動作更穩定">
+
+      </details>
 
       <!-- 儲存 + 診斷 -->
       <div class="flex gap-2 mb-3">

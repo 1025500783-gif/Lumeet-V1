@@ -1,4 +1,4 @@
-const CACHE_NAME = 'lumeet-shell-v5';
+const CACHE_NAME = 'lumeet-shell-v6';
 const SHELL = [
   './',
   './index.html',
